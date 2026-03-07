@@ -323,24 +323,6 @@ code {
   font-size: 11px; color: var(--muted); line-height: 1.7;
 }
 
-/* drop zone */
-.drop-zone {
-  border: 1.5px dashed var(--border-mid);
-  border-radius: var(--r);
-  padding: 14px 12px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color .15s, background .15s;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.drop-zone strong { color: var(--text); font-weight: 500; }
-.drop-zone small  { font-family: var(--mono); font-size: 10px; }
-.drop-zone:hover, .drop-zone.over {
-  border-color: var(--accent); background: var(--accent-lt); color: var(--accent);
-}
-.drop-zone.over strong { color: var(--accent); }
 
 .load-st {
   font-family: var(--mono); font-size: 10px;
@@ -447,27 +429,6 @@ code {
 .ptab:hover  { border-color: #999; color: var(--text); }
 .ptab.active { border-color: var(--text); background: var(--text); color: #fff; }
 
-/* file zone */
-.file-zone {
-  border: 1px dashed var(--border-mid);
-  border-radius: var(--r);
-  padding: 14px 20px;
-  display: flex; align-items: center; gap: 14px;
-  background: var(--surface);
-}
-.fz-text { font-size: .82rem; color: var(--muted); line-height: 1.6; flex: 1; }
-.fz-text strong { color: var(--text); display: block; font-weight: 600; margin-bottom: 2px; }
-label.ul-btn {
-  font-size: .8rem; font-weight: 500;
-  padding: 6px 14px;
-  border: 1px solid var(--text);
-  border-radius: 3px;
-  color: var(--text); cursor: pointer;
-  white-space: nowrap; transition: all .12s;
-  flex-shrink: 0;
-}
-label.ul-btn:hover { background: var(--text); color: #fff; }
-input[type="file"] { display: none; }
 
 /* image viewer */
 .viewer-frame {
@@ -598,16 +559,6 @@ input[type="file"] { display: none; }
 .gl-name { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
 .gl-desc { font-size: 10px; color: var(--muted); font-family: var(--mono); }
 
-/* file zone reuse */
-.goes-file-zone {
-  border: 1px dashed var(--border-mid);
-  border-radius: var(--r);
-  padding: 14px 20px;
-  display: flex; align-items: center; gap: 14px;
-  background: var(--surface);
-}
-.gfz-text { font-size: .82rem; color: var(--muted); line-height: 1.6; flex: 1; }
-.gfz-text strong { color: var(--text); display: block; font-weight: 600; margin-bottom: 2px; }
 
 .goes-footer {
   display: flex; gap: 20px; flex-wrap: wrap;
@@ -755,18 +706,6 @@ input[type="file"] { display: none; }
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-hd">Load Frames</div>
-        <div class="card-bd">
-          <div class="drop-zone" id="pv-drop">
-            <strong>Drop PNGs here</strong><br>
-            or click to browse<br>
-            <small id="pv-drop-hint">frame_f06_00.png … frame_f06_11.png</small>
-          </div>
-          <input type="file" id="pv-file" accept="image/png,image/*" multiple>
-          <div class="load-st" id="pv-loadst">No frames loaded.</div>
-        </div>
-      </div>
 
     </div><!-- /sidebar -->
   </div><!-- /pv-page -->
@@ -821,15 +760,6 @@ input[type="file"] { display: none; }
     </span>
   </div>
 
-  <div class="file-zone">
-    <div class="fz-text">
-      <strong>Load Figures</strong>
-      Run <code>python -m wx_monitor mrms_hrrr</code> then open the output PNGs —
-      pattern: <code>mrms_qpe_vs_hrrr_&lt;HH&gt;hr_&lt;YYYYMMDD_HH&gt;*.png</code>
-    </div>
-    <label class="ul-btn" for="qpe-file">Open Files</label>
-    <input type="file" id="qpe-file" accept="image/png,image/*" multiple>
-  </div>
 
   <div class="period-tabs" id="qpe-ptabs"></div>
 
@@ -877,10 +807,7 @@ input[type="file"] { display: none; }
     <div class="goes-overlay-ts" id="goes-ots"></div>
     <div class="goes-empty" id="goes-empty">
       <div class="goes-empty-ico">🛰</div>
-      <p>No image loaded.<br>
-         Run <code>python -m wx_monitor goes_mrms</code><br>
-         then open <code>goes19_conus_geocolor_mrms.png</code><br>
-         or drag &amp; drop the file here.</p>
+      <p>Run <code>python -m wx_monitor goes_mrms</code> — image loads automatically.</p>
     </div>
   </div>
 
@@ -914,15 +841,6 @@ input[type="file"] { display: none; }
     </div>
   </div>
 
-  <div class="goes-file-zone">
-    <div class="gfz-text">
-      <strong>Load Image</strong>
-      Run <code>python -m wx_monitor goes_mrms</code>, then open
-      <code>goes19_conus_geocolor_mrms.png</code> — or drag &amp; drop it onto the viewer above.
-    </div>
-    <label class="ul-btn" for="goes-file">Open File</label>
-    <input type="file" id="goes-file" accept="image/png,image/*">
-  </div>
 
   <div class="goes-footer">
     <span>GOES-19 ABI GeoColor (C01·C02·C03·C07·C13) · s3://noaa-goes19 (anonymous)</span>
@@ -950,15 +868,6 @@ input[type="file"] { display: none; }
     </span>
   </div>
 
-  <div class="file-zone">
-    <div class="fz-text">
-      <strong>Load Figures</strong>
-      Run <code>python -m wx_monitor refl_m10</code> then open the output PNGs —
-      pattern: <code>refl_m10_f&lt;FXX&gt;_&lt;YYYYMMDD_HH&gt;*.png</code>
-    </div>
-    <label class="ul-btn" for="refl-file">Open Files</label>
-    <input type="file" id="refl-file" accept="image/png,image/*" multiple>
-  </div>
 
   <div class="period-tabs" id="refl-ptabs"></div>
 
@@ -1011,8 +920,7 @@ document.querySelectorAll('.app-tab').forEach(btn =>
                         to GitHub Pages.  Always works on any static host.
    2. Directory scan — works when served by `python -m http.server`
                         (server returns browseable HTML for directories).
-   3. Silent fail    — shows empty placeholders; user can drag-and-drop
-                        or use the file pickers in each panel.
+   3. Silent fail    — shows empty placeholders.
 ═══════════════════════════════════════════════════════════ */
 
 // ── App-bar status widget ─────────────────────────────────
@@ -1163,15 +1071,12 @@ const pvNext   = document.getElementById('pv-next');
 const pvSlower = document.getElementById('pv-slower');
 const pvFaster = document.getElementById('pv-faster');
 const pvSpd    = document.getElementById('pv-spd');
-const pvDrop   = document.getElementById('pv-drop');
-const pvFile   = document.getElementById('pv-file');
 const pvLoadst = document.getElementById('pv-loadst');
 const pvLoadbar= document.getElementById('pv-loadbar');
 const pvIvV    = document.getElementById('pv-iv-valid');
 const pvIvR    = document.getElementById('pv-iv-run');
 const pvIvFxx  = document.getElementById('pv-iv-fxx');
 const pvFxxSel = document.getElementById('pv-fxx-sel');
-const pvHint   = document.getElementById('pv-drop-hint');
 
 // fxx selector
 pvFxxSel.addEventListener('click', e => {
@@ -1190,7 +1095,6 @@ function pvSelectFxx(fxx) {
   );
   pvIvFxx.textContent = `F${String(fxx).padStart(2,'0')}`;
   const pad = String(fxx).padStart(2,'0');
-  pvHint.textContent = `frame_f${pad}_00.png … frame_f${pad}_11.png`;
   pvFrames = []; pvTimes = [];
   pvLoadbar.style.width = '0%';
   pvNodata.classList.add('show');
@@ -1352,45 +1256,7 @@ function pvAutoLoadPaths(paths) {
   }
 }
 
-// ── Manual file load ──────────────────────────────────────
-function pvLoadFiles(list) {
-  const imgs = [...list]
-    .filter(f => f.type.startsWith('image/') || f.name.match(/\.png$/i))
-    .sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
-  if (!imgs.length) { pvLoadst.innerHTML = '<span class="fail">No valid images.</span>'; return; }
-  pvStop();
-  pvLoadbar.style.width = '0%';
-  pvLoadst.textContent = `Loading ${imgs.length} file(s)…`;
-  let loaded = 0;
-  imgs.forEach(file => {
-    const r = new FileReader();
-    r.onload = e => {
-      pvCache[file.name] = { src: e.target.result, name: file.name };
-      loaded++;
-      pvLoadbar.style.width = `${loaded/imgs.length*100}%`;
-      if (loaded === imgs.length) {
-        const cts = FXX_LIST.map(f => {
-          const p = String(f).padStart(2,'0');
-          const n = Object.keys(pvCache).filter(k => k.toLowerCase().startsWith(`frame_f${p}_`)).length;
-          return n ? `F${p}:${n}` : null;
-        }).filter(Boolean).join('  ');
-        pvLoadst.innerHTML = `<span class="ok">✓ ${loaded} cached — ${cts}</span>`;
-        if (!pvFromCache(pvFxx, null))
-          pvLoadst.innerHTML += `<br><span class="fail">No F${String(pvFxx).padStart(2,'0')} frames.</span>`;
-      }
-    };
-    r.readAsDataURL(file);
-  });
-}
 
-pvDrop.addEventListener('click', () => pvFile.click());
-pvFile.addEventListener('change', e => pvLoadFiles(e.target.files));
-pvDrop.addEventListener('dragover', e => { e.preventDefault(); pvDrop.classList.add('over'); });
-pvDrop.addEventListener('dragleave', () => pvDrop.classList.remove('over'));
-pvDrop.addEventListener('drop', e => {
-  e.preventDefault(); pvDrop.classList.remove('over');
-  pvLoadFiles(e.dataTransfer.files);
-});
 
 // auto-load from frames/
 async function pvAutoLoad(targetTs, autoplay = true) {
@@ -1440,7 +1306,6 @@ let qpeFigs = {}, qpePeriod = null;
 const qpeImg   = document.getElementById('qpe-img');
 const qpePh    = document.getElementById('qpe-ph');
 const qpePhTxt = document.getElementById('qpe-ph-txt');
-const qpeFile  = document.getElementById('qpe-file');
 const qpePtabs = document.getElementById('qpe-ptabs');
 
 // ── Shared helpers ────────────────────────────────────────
@@ -1472,25 +1337,10 @@ function qpeIngest(entries) {
 
 // ── Auto-load from directory-scan paths ──────────────────
 function qpeAutoLoadPaths(paths) {
-  // Revoke any leftover blob URLs from a previous manual load
-  Object.values(qpeFigs).flat().forEach(f => {
-    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
-  });
   qpeFigs = {};
   qpeIngest(paths.map(p => ({ name: p.split('/').pop(), src: p })));
 }
 
-// ── Manual file picker ────────────────────────────────────
-qpeFile.addEventListener('change', e => {
-  Object.values(qpeFigs).flat().forEach(f => {
-    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
-  });
-  qpeFigs = {};
-  qpeIngest([...e.target.files].map(file => ({
-    name: file.name,
-    src:  URL.createObjectURL(file),
-  })));
-});
 
 function qpeBuildTabs() {
   qpePtabs.innerHTML = '';
@@ -1551,7 +1401,6 @@ const goesImg    = document.getElementById('goes-img');
 const goesEmpty  = document.getElementById('goes-empty');
 const goesOts    = document.getElementById('goes-ots');
 const goesMeta   = document.getElementById('goes-meta');
-const goesFile   = document.getElementById('goes-file');
 const goesViewer = document.getElementById('goes-viewer');
 
 // Shared: update overlay timestamp + header metadata from a filename
@@ -1580,35 +1429,6 @@ function goesAutoLoadPath(path) {
   setTimeout(() => { goesImg.src = path; }, 40);
 }
 
-// Manual load: FileReader → data URL
-function goesLoad(file) {
-  const reader = new FileReader();
-  reader.onload = ev => {
-    goesImg.classList.add('fading');
-    goesImg.onload = () => {
-      goesImg.classList.remove('fading');
-      goesEmpty.classList.add('hidden');
-      goesApplyMeta(file.name);
-    };
-    setTimeout(() => { goesImg.src = ev.target.result; }, 40);
-  };
-  reader.readAsDataURL(file);
-}
-
-goesFile.addEventListener('change', e => { if (e.target.files[0]) goesLoad(e.target.files[0]); });
-
-// Drag-and-drop onto the dark viewer
-goesViewer.addEventListener('dragover', e => {
-  e.preventDefault();
-  goesViewer.style.outline = '2px dashed var(--accent)';
-  goesViewer.style.outlineOffset = '-3px';
-});
-goesViewer.addEventListener('dragleave', () => { goesViewer.style.outline = ''; });
-goesViewer.addEventListener('drop', e => {
-  e.preventDefault(); goesViewer.style.outline = '';
-  const f = e.dataTransfer.files[0];
-  if (f && (f.type.startsWith('image/') || f.name.match(/\.png$/i))) goesLoad(f);
-});
 
 /* ═══════════════════════════════════════════════════════════
    PANEL 4 — Reflectivity at −10 °C  (MRMS vs HRRR multi-fxx)
@@ -1624,7 +1444,6 @@ let reflFigs = {}, reflFxx = null;
 const reflImg    = document.getElementById('refl-img');
 const reflPh     = document.getElementById('refl-ph');
 const reflPhTxt  = document.getElementById('refl-ph-txt');
-const reflFile   = document.getElementById('refl-file');
 const reflPtabs  = document.getElementById('refl-ptabs');
 
 // filename pattern:  refl_m10_f06_20260302_18+0000.png
@@ -1654,23 +1473,10 @@ function reflIngest(entries) {
 }
 
 function reflAutoLoadPaths(paths) {
-  Object.values(reflFigs).flat().forEach(f => {
-    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
-  });
   reflFigs = {};
   reflIngest(paths.map(p => ({ name: p.split('/').pop(), src: p })));
 }
 
-reflFile.addEventListener('change', e => {
-  Object.values(reflFigs).flat().forEach(f => {
-    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
-  });
-  reflFigs = {};
-  reflIngest([...e.target.files].map(file => ({
-    name: file.name,
-    src:  URL.createObjectURL(file),
-  })));
-});
 
 function reflBuildTabs() {
   reflPtabs.innerHTML = '';
