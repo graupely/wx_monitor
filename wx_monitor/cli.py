@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime
+
 
 from wx_monitor.config import VALID_TIME
 

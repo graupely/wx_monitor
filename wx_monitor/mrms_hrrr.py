@@ -38,7 +38,6 @@ from __future__ import annotations
 import gzip
 import os
 import re
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -47,7 +46,6 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import cartopy.io.shapereader as shpreader
 import cfgrib
-import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -64,7 +62,6 @@ from wx_monitor.config import (
     MRMS_QPE_BASE,
     MRMS_QPE_DIRS,
     MRMS_QPE_PREFIXES,
-    NWS_COLORS,
     NWS_LEVELS,
     OUTPUT_DPI,
     VALID_TIME,
@@ -199,7 +196,7 @@ def _download_mrms_qpe(url: str, hours: int) -> str:
             f"Snippet: {snippet}"
         )
 
-    print(f"    Decompressing …", end=" ", flush=True)
+    print("    Decompressing …", end=" ", flush=True)
     raw = gzip.decompress(compressed)
     print(f"done ({len(raw)//1024} KB)")
 
@@ -309,7 +306,7 @@ def _find_apcp_byte_range(idx_text: str, fxx: int) -> tuple[int, int | str]:
             return start, end
     raise RuntimeError(
         f"APCP 0-{fxx}h not found in HRRR index.\nAvailable APCP lines:\n"
-        + "\n".join(l for l in lines if "APCP" in l)
+        + "\n".join(ln for ln in lines if "APCP" in ln)
     )
 
 

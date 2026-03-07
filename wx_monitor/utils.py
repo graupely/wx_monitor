@@ -9,9 +9,8 @@ from __future__ import annotations
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Optional
 
-import numpy as np
 import requests
 
 

@@ -37,11 +37,9 @@ From the CLI (called automatically after every product run)::
 from __future__ import annotations
 
 import json
-import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 
 # ── filename patterns ─────────────────────────────────────────────────────────
@@ -56,11 +54,15 @@ _RE_REFL_M10 = re.compile(r'^refl_m10[^/]*\.png$', re.IGNORECASE)
 
 
 def _classify(name: str) -> str | None:
-    """Return 'goes', 'qpe', or 'frames' for a known filename, else None."""
-    if _RE_GOES.match(name):   return 'goes'
-    if _RE_QPE.match(name):    return 'qpe'
-    if _RE_FRAME.match(name):    return 'frames'
-    if _RE_REFL_M10.match(name): return 'refl_m10'
+    """Return 'goes', 'qpe', 'frames', or 'refl_m10' for a known filename."""
+    if _RE_GOES.match(name):
+        return 'goes'
+    if _RE_QPE.match(name):
+        return 'qpe'
+    if _RE_FRAME.match(name):
+        return 'frames'
+    if _RE_REFL_M10.match(name):
+        return 'refl_m10'
     return None
 
 

@@ -36,16 +36,13 @@ from __future__ import annotations
 import gzip
 import os
 import re
-import tempfile
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import datetime, timedelta
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import cfgrib
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
 import requests
 from matplotlib.colors import BoundaryNorm
@@ -233,11 +230,11 @@ def _find_refd_byte_range(idx_text: str, fxx: int) -> tuple[int, int | str]:
                 return start, end
 
     # Helpful diagnostics if no match
-    refd_lines = [l for l in lines if "REFD" in l.upper()]
+    refd_lines = [ln for ln in lines if "REFD" in ln.upper()]
     raise RuntimeError(
         f"REFD at −10 °C not found in HRRR idx (tried: {_HRRR_REFD_PATTERNS}).\n"
         f"All REFD lines present:\n" +
-        "\n".join(f"  {l}" for l in refd_lines)
+        "\n".join(f"  {ln}" for ln in refd_lines)
     )
 
 

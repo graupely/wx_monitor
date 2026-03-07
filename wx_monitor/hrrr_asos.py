@@ -33,7 +33,7 @@ from __future__ import annotations
 import io
 import time
 import warnings
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -41,7 +41,6 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.colors as mcolors
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -246,7 +245,7 @@ def _fetch_asos_network(
             text = r.text.strip()
             if not text or text.startswith("ERROR") or len(text) < 10:
                 return pd.DataFrame()
-            lines = [l for l in text.splitlines() if not l.startswith("#")]
+            lines = [ln for ln in text.splitlines() if not ln.startswith("#")]
             return (
                 pd.read_csv(io.StringIO("\n".join(lines)), low_memory=False)
                 if lines else pd.DataFrame()
