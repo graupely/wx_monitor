@@ -1,0 +1,105 @@
+# .github/workflows/update.yml
+#
+# Runs wx_monitor 4 times per day, overwrites output PNGs + manifest.json
+# on gh-pages with only the most recent run's files, and redeploys GitHub
+# Pages so the viewer always shows fresh data without accumulating history.
+#
+# Required settings
+# ─────────────────
+#  • In Settings → Pages set Source = "Deploy from a branch",
+#    Branch = gh-pages, Folder = / (root).
+#  • No extra secrets needed — GITHUB_TOKEN has push permission by default.
+#    If your repo requires branch-protection rules that block the bot, add
+#    a PAT as secret GH_PAT and replace `token: ${{ secrets.GITHUB_TOKEN }}`
+#    with `token: ${{ secrets.GH_PAT }}`.
+#
+# Output layout on gh-pages branch  (overwritten each run — no accumulation)
+# ─────────────────────────────────
+#  index.html                    ← viewer HTML (copied from main)
+#  manifest.json                 ← auto-generated file list
+#  output/
+#    goes19_conus_visible_mrms.png
+#    mrms_qpe_vs_hrrr_01hr_*.png
+#    mrms_qpe_vs_hrrr_03hr_*.png
+#    mrms_qpe_vs_hrrr_06hr_*.png
+#    mrms_qpe_vs_hrrr_12hr_*.png
+#    frames/
+#      frame_f01_00.png … frame_f12_11.png
+
+name: update-wx-monitor
+
+on:
+  schedule:
+    # Four runs per day, timed to catch freshly-published model/obs data.
+    # :05 past gives data providers a few minutes after the hour to publish.
+    - cron: '5 12 * * *'   # 12:05 UTC
+    - cron: '5 15 * * *'   # 15:05 UTC
+    - cron: '5 18 * * *'   # 18:05 UTC
+    - cron: '5  0 * * *'   # 00:05 UTC
+
+  # Allow a manual run from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  run-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45       # most products finish in ~10 min; cap at 45
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ──────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]" 2>/dev/null || pip install -r requirements.txt
+
+      # ── 3. Run products ───────────────────────────────────────────────────
+      - name: Run wx_monitor (all products)
+        run: |
+          python -m wx_monitor \
+            --output-dir output \
+            --manifest-path manifest.json
+
+      # ── 4. Refresh manifest even on partial product failures ─────────────
+      - name: Refresh manifest.json
+        if: always()
+        run: |
+          python -m wx_monitor \
+            --manifest \
+            --output-dir output \
+            --manifest-path manifest.json
+
+      # ── 5. Stage deployment artefacts ─────────────────────────────────────
+      - name: Stage deployment artefacts
+        run: |
+          mkdir -p _deploy
+          cp wx_monitor_viewer.html _deploy/index.html
+          cp manifest.json _deploy/manifest.json
+          cp -r output _deploy/output
+
+      # ── 6. Deploy to gh-pages (force-push — overwrites previous run) ──────
+      #    force_orphan: true  creates a single-commit branch each time,
+      #    so gh-pages never accumulates binary history.
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _deploy
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "chore: wx-monitor update ${{ github.run_id }}"
+

@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "wx-monitor"
+version         = "1.0.0"
+description     = "Operational weather visualisation: GOES-19, MRMS, HRRR, Stage IV, ASOS"
+readme          = "README.md"
+requires-python = ">=3.10"
+license         = { text = "MIT" }
+keywords        = ["meteorology", "weather", "GOES", "HRRR", "MRMS", "radar", "precipitation"]
+
+authors = [
+  { name = "wx-monitor contributors" },
+]
+
+dependencies = [
+  # Data access
+  "s3fs>=2024.1",
+  "herbie-data>=2024.1",
+  "requests>=2.31",
+  # Scientific core
+  "numpy>=1.26",
+  "scipy>=1.12",
+  "pandas>=2.1",
+  # NetCDF / GRIB
+  "xarray>=2024.1",
+  "h5netcdf>=1.3",
+  "h5py>=3.10",
+  "netCDF4>=1.6",
+  "cfgrib>=0.9.10",
+  "eccodes>=1.6",
+  # Projection
+  "pyproj>=3.6",
+  # Plotting
+  "matplotlib>=3.8",
+  "cartopy>=0.23",
+  # Geometry (CONUS mask)
+  "shapely>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov",
+  "ruff",
+  "mypy",
+]
+
+[project.scripts]
+wx-monitor = "wx_monitor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["wx_monitor*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

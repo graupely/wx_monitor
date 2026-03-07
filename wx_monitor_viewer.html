@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wx-monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Design tokens  (shared across all three panels)
+───────────────────────────────────────────────────────────── */
+:root {
+  --bg:         #ffffff;
+  --surface:    #f7f8fa;
+  --border:     #e2e5ea;
+  --border-mid: #c8cdd6;
+  --text:       #1a1f2e;
+  --muted:      #6b7585;
+  --accent:     #2563eb;
+  --accent-lt:  #eff4ff;
+  --rain:       #1f78b4;
+  --snow:       #6baed6;
+  --frzr:       #d73027;
+  --icep:       #f46d43;
+  --green:      #16a34a;
+  --mono:       'IBM Plex Mono', monospace;
+  --sans:       'IBM Plex Sans', sans-serif;
+  --r:          6px;
+  --shadow:     0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px var(--border);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   App-level chrome
+───────────────────────────────────────────────────────────── */
+.app-bar {
+  width: 100%;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 52px;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
+.app-wordmark {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  padding-right: 24px;
+  border-right: 1px solid var(--border);
+  margin-right: 4px;
+  flex-shrink: 0;
+  gap: 0;
+}
+.app-wordmark em { font-style: normal; color: var(--accent); font-family: var(--mono); }
+
+.app-tabs { display: flex; align-items: stretch; }
+
+.app-tab {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 20px;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color .12s, border-color .12s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  position: relative;
+  top: 1px;
+}
+.app-tab:hover  { color: var(--text); }
+.app-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.app-tab-icon { font-size: 15px; line-height: 1; }
+
+.app-spacer { flex: 1; }
+
+.app-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.live-dot.pulse { animation: blink 2s infinite; }
+
+/* panels */
+.panel { display: none; width: 100%; flex-direction: column; align-items: center; }
+.panel.active { display: flex; }
+
+/* ─────────────────────────────────────────────────────────────
+   Shared primitives
+───────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.card-hd {
+  padding: 9px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.card-bd { padding: 12px 14px; }
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.info-row:last-child { border-bottom: none; }
+.ik { font-size: 11px; color: var(--muted); font-family: var(--mono); flex-shrink: 0; }
+.iv { font-size: 12px; font-weight: 500; font-family: var(--mono); text-align: right; color: var(--text); word-break: break-all; }
+.iv.hi { color: var(--accent); }
+
+.badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: .02em;
+}
+.badge-blue { background: var(--accent-lt); color: var(--accent); }
+.badge-gray { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: #f0f2f5;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #444;
+}
+
+.btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: all .1s;
+  user-select: none;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.btn:hover  { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+.btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.ico    { padding: 5px 10px; font-size: 15px; }
+
+.divider { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL 1 — HRRR + ASOS  Precipitation Type  (animation)
+   Ported verbatim from precip_viewer__5_.html; all IDs
+   prefixed with pv- to avoid collisions.
+═══════════════════════════════════════════════════════════ */
+
+/* fxx selector strip (lives inside the subheader row) */
+.fxx-row {
+  width: 100%;
+  max-width: 1440px;
+  padding: 12px 28px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fxx-sel {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.fxx-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 11px;
+  background: var(--bg);
+  color: var(--muted);
+  border: none;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.fxx-btn:last-child { border-right: none; }
+.fxx-btn:hover      { background: var(--surface); color: var(--text); }
+.fxx-btn.active     { background: var(--accent); color: #fff; }
+
+/* two-column layout */
+.pv-page {
+  width: 100%;
+  max-width: 1440px;
+  padding: 14px 28px 0;
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: 16px;
+  align-items: start;
+}
+
+/* map panel */
+.map-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.map-toolbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+.tlbl { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--text); flex: 1; }
+.tcnt { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+.prog-track { height: 3px; background: var(--border); position: relative; }
+#pv-loadbar {
+  position: absolute; left: 0; top: 0; height: 100%;
+  width: 0%; background: var(--accent);
+  transition: width .3s; border-radius: 0 2px 2px 0;
+}
+
+.map-body { position: relative; background: var(--surface); min-height: 340px; }
+
+#pv-img {
+  width: 100%; display: block;
+  transition: opacity .1s ease;
+}
+#pv-img.fading { opacity: 0; }
+
+.nodata-msg {
+  display: none;
+  position: absolute; inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--surface);
+}
+.nodata-msg.show { display: flex; }
+.nodata-ico {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted);
+}
+.nodata-msg p { font-size: 13px; color: var(--muted); text-align: center; max-width: 260px; line-height: 1.6; }
+
+/* sidebar */
+.pv-sidebar { display: flex; flex-direction: column; gap: 10px; }
+
+.leg-item { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
+.swatch {
+  width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,.1);
+}
+.leg-name { font-size: 13px; font-weight: 500; flex: 1; }
+.leg-code { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.leg-note {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--muted); line-height: 1.7;
+}
+
+/* drop zone */
+.drop-zone {
+  border: 1.5px dashed var(--border-mid);
+  border-radius: var(--r);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.drop-zone strong { color: var(--text); font-weight: 500; }
+.drop-zone small  { font-family: var(--mono); font-size: 10px; }
+.drop-zone:hover, .drop-zone.over {
+  border-color: var(--accent); background: var(--accent-lt); color: var(--accent);
+}
+.drop-zone.over strong { color: var(--accent); }
+
+.load-st {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--muted); margin-top: 8px; line-height: 1.7;
+}
+.load-st .ok   { color: var(--green); }
+.load-st .fail { color: var(--frzr); }
+
+/* playback controls */
+.pv-ctrls {
+  width: 100%; max-width: 1440px;
+  padding: 12px 28px 0;
+}
+.ctrls-inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.dot-strip { display: flex; gap: 5px; align-items: center; flex: 1; }
+.dot {
+  flex: 1; height: 4px; background: var(--border);
+  border-radius: 2px; cursor: pointer; transition: background .12s;
+  position: relative;
+}
+.dot::after {
+  content: attr(title);
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  background: var(--text); color: #fff;
+  font-family: var(--mono); font-size: 10px;
+  padding: 3px 6px; border-radius: 3px;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .1s;
+}
+.dot:hover::after { opacity: 1; }
+.dot.active { background: var(--accent); }
+.dot.loaded { background: var(--border-mid); }
+.dot:hover  { background: var(--accent); }
+
+.scrub-row { display: flex; align-items: center; gap: 10px; }
+#pv-scrub {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; background: var(--border);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+#pv-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--accent); cursor: pointer;
+}
+#pv-scrub::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #fff; cursor: pointer;
+}
+
+.btn-row { display: flex; align-items: center; gap: 6px; }
+.sp-disp { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 36px; }
+.btn-row-r { margin-left: auto; }
+
+/* panel-level footer */
+.pv-footer {
+  width: 100%; max-width: 1440px;
+  padding: 12px 28px 24px; margin-top: 14px;
+  display: flex; gap: 20px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--muted); border-top: 1px solid var(--border);
+}
+.pv-footer span { display: flex; align-items: center; gap: 5px; }
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL 2 — MRMS QPE vs HRRR  (static period figures)
+   Ported from stageiv_vs_hrrr__2_.html; IDs prefixed qpe-
+═══════════════════════════════════════════════════════════ */
+.qpe-wrap {
+  width: 100%; max-width: 1600px;
+  padding: 20px 28px 40px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.qpe-top {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+
+.qpe-info {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--muted); margin-left: auto;
+}
+
+/* period tab strip */
+.period-tabs { display: flex; gap: 4px; }
+.ptab {
+  font-family: var(--sans);
+  font-size: .82rem; font-weight: 500;
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg); color: var(--muted);
+  cursor: pointer; transition: all .12s;
+}
+.ptab:hover  { border-color: #999; color: var(--text); }
+.ptab.active { border-color: var(--text); background: var(--text); color: #fff; }
+
+/* file zone */
+.file-zone {
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--r);
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface);
+}
+.fz-text { font-size: .82rem; color: var(--muted); line-height: 1.6; flex: 1; }
+.fz-text strong { color: var(--text); display: block; font-weight: 600; margin-bottom: 2px; }
+label.ul-btn {
+  font-size: .8rem; font-weight: 500;
+  padding: 6px 14px;
+  border: 1px solid var(--text);
+  border-radius: 3px;
+  color: var(--text); cursor: pointer;
+  white-space: nowrap; transition: all .12s;
+  flex-shrink: 0;
+}
+label.ul-btn:hover { background: var(--text); color: #fff; }
+input[type="file"] { display: none; }
+
+/* image viewer */
+.viewer-frame {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  min-height: 280px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.viewer-frame img {
+  width: 100%; height: auto; display: block;
+  transition: opacity .15s;
+}
+.viewer-frame img.fade { opacity: 0; }
+
+.vf-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+}
+.vf-placeholder.hidden { display: none; }
+.vf-placeholder p { font-size: .8rem; color: var(--muted); }
+
+/* status bar */
+.statusbar {
+  display: flex; gap: 24px;
+  padding-top: 10px; border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.stat { display: flex; gap: 6px; align-items: baseline; }
+.stlbl {
+  font-family: var(--mono); font-size: .68rem;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+}
+.stval { font-family: var(--mono); font-size: .76rem; color: var(--text); }
+
+.qpe-footer {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding-top: 12px; border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL 3 — GOES-19 Visible + MRMS Reflectivity  (static)
+═══════════════════════════════════════════════════════════ */
+.goes-wrap {
+  width: 100%; max-width: 1600px;
+  padding: 20px 28px 40px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.goes-top {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.goes-top h2 {
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+.goes-top-meta {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  display: flex; gap: 16px;
+}
+
+/* satellite image viewer — dark background to match the figure */
+.goes-viewer {
+  position: relative;
+  background: #0d0d0f;
+  border: 1px solid #333;
+  border-radius: var(--r);
+  min-height: 360px;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+#goes-img {
+  width: 100%; height: auto; display: block;
+  transition: opacity .2s;
+}
+#goes-img.fading { opacity: 0; }
+
+.goes-empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+}
+.goes-empty.hidden { display: none; }
+.goes-empty-ico {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+}
+.goes-empty p {
+  font-size: 13px; color: rgba(255,255,255,.45);
+  text-align: center; line-height: 1.8;
+}
+.goes-empty code {
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.55);
+  font-size: 11px;
+}
+
+.goes-overlay-ts {
+  position: absolute; top: 12px; right: 14px;
+  background: rgba(0,0,0,.55);
+  color: rgba(255,255,255,.82);
+  font-family: var(--mono); font-size: 11px;
+  padding: 4px 10px; border-radius: 4px;
+  backdrop-filter: blur(4px);
+  pointer-events: none; display: none;
+}
+.goes-overlay-ts.show { display: block; }
+
+/* legend strip */
+.goes-legend {
+  display: flex; gap: 0;
+  border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;
+}
+.gl-item {
+  flex: 1; padding: 9px 12px;
+  border-right: 1px solid var(--border);
+}
+.gl-item:last-child { border-right: none; }
+.gl-bar {
+  height: 5px; border-radius: 2px; margin-bottom: 6px;
+}
+.gl-name { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.gl-desc { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+/* file zone reuse */
+.goes-file-zone {
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--r);
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface);
+}
+.gfz-text { font-size: .82rem; color: var(--muted); line-height: 1.6; flex: 1; }
+.gfz-text strong { color: var(--text); display: block; font-weight: 600; margin-bottom: 2px; }
+
+.goes-footer {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding-top: 12px; border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     App bar
+═══════════════════════════════════════════════════════════ -->
+<header class="app-bar">
+
+  <div class="app-wordmark">wx<em>-monitor</em></div>
+
+  <nav class="app-tabs">
+    <button class="app-tab active" data-panel="p-asos">
+      <span class="app-tab-icon">🌧</span> HRRR + ASOS Ptype
+    </button>
+    <button class="app-tab" data-panel="p-qpe">
+      <span class="app-tab-icon">📊</span> MRMS QPE vs HRRR
+    </button>
+    <button class="app-tab" data-panel="p-goes">
+      <span class="app-tab-icon">🛰</span> GOES-19 + Reflectivity
+    </button>
+    <button class="app-tab" data-panel="p-refl">
+      <span class="app-tab-icon">❄</span> Reflectivity −10 °C
+    </button>
+  </nav>
+
+  <div class="app-spacer"></div>
+
+  <div class="app-meta">
+    <span class="live-dot pulse"></span>
+    CONUS · NOAA public data
+  </div>
+
+</header>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PANEL 1 — HRRR + ASOS Precipitation Type  (animation)
+═══════════════════════════════════════════════════════════ -->
+<section class="panel active" id="p-asos">
+
+  <!-- fxx / badge sub-row -->
+  <div class="fxx-row">
+    <div class="fxx-sel" id="pv-fxx-sel">
+      <button class="fxx-btn"        data-fxx="1">F01</button>
+      <button class="fxx-btn"        data-fxx="3">F03</button>
+      <button class="fxx-btn active" data-fxx="6">F06</button>
+      <button class="fxx-btn"        data-fxx="12">F12</button>
+    </div>
+    <span class="badge badge-gray">Previous 12 h</span>
+    <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)">
+      CRAIN · CSNOW · CFRZR · CICEP
+    </span>
+  </div>
+
+  <!-- two-column content -->
+  <div class="pv-page">
+
+    <!-- map -->
+    <div class="map-panel">
+      <div class="map-toolbar">
+        <span class="tlbl" id="pv-tlbl">— UTC</span>
+        <span class="tcnt" id="pv-tcnt">0 / 0</span>
+      </div>
+      <div class="prog-track"><div id="pv-loadbar"></div></div>
+      <div class="map-body">
+        <img id="pv-img" src="" alt="Precipitation type map" draggable="false">
+        <div class="nodata-msg show" id="pv-nodata">
+          <div class="nodata-ico">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 0 1 0 9Z"/>
+            </svg>
+          </div>
+          <p>No frames loaded.<br>
+             Drop PNGs below or run:<br>
+             <code>python -m wx_monitor hrrr_asos</code></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- sidebar -->
+    <div class="pv-sidebar">
+
+      <div class="card">
+        <div class="card-hd">Legend</div>
+        <div class="card-bd">
+          <div class="leg-item">
+            <div class="swatch" style="background:var(--rain)"></div>
+            <span class="leg-name">Rain</span>
+            <span class="leg-code">CRAIN</span>
+          </div>
+          <div class="leg-item">
+            <div class="swatch" style="background:var(--snow)"></div>
+            <span class="leg-name">Snow</span>
+            <span class="leg-code">CSNOW</span>
+          </div>
+          <div class="leg-item">
+            <div class="swatch" style="background:var(--frzr)"></div>
+            <span class="leg-name">Freezing Rain</span>
+            <span class="leg-code">CFRZR</span>
+          </div>
+          <div class="leg-item">
+            <div class="swatch" style="background:var(--icep)"></div>
+            <span class="leg-name">Ice Pellets</span>
+            <span class="leg-code">CICEP</span>
+          </div>
+          <div class="leg-note">
+            HRRR fill = model · markers = ASOS<br>
+            Drizzle → Rain &nbsp;·&nbsp; Mixed → Snow<br>
+            Hail excluded from verification
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">Frame Info</div>
+        <div class="card-bd">
+          <div class="info-row">
+            <span class="ik">valid</span>
+            <span class="iv hi" id="pv-iv-valid">—</span>
+          </div>
+          <div class="info-row">
+            <span class="ik">run</span>
+            <span class="iv hi" id="pv-iv-run">—</span>
+          </div>
+          <div class="info-row">
+            <span class="ik">fxx</span>
+            <span class="iv" id="pv-iv-fxx">F06</span>
+          </div>
+          <div class="info-row">
+            <span class="ik">model</span>
+            <span class="iv">HRRR 3 km</span>
+          </div>
+          <div class="info-row">
+            <span class="ik">obs</span>
+            <span class="iv">IEM ASOS</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">Load Frames</div>
+        <div class="card-bd">
+          <div class="drop-zone" id="pv-drop">
+            <strong>Drop PNGs here</strong><br>
+            or click to browse<br>
+            <small id="pv-drop-hint">frame_f06_00.png … frame_f06_11.png</small>
+          </div>
+          <input type="file" id="pv-file" accept="image/png,image/*" multiple>
+          <div class="load-st" id="pv-loadst">No frames loaded.</div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+  </div><!-- /pv-page -->
+
+  <!-- playback controls -->
+  <div class="pv-ctrls">
+    <div class="ctrls-inner">
+      <div class="dot-strip" id="pv-dots"></div>
+      <div class="scrub-row">
+        <input type="range" id="pv-scrub" min="0" max="11" value="0" step="1">
+      </div>
+      <div class="btn-row">
+        <button class="btn ico" id="pv-prev" title="Previous (←)">&#9664;</button>
+        <button class="btn ico" id="pv-play" title="Play / Pause (Space)">&#9654;</button>
+        <button class="btn ico" id="pv-next" title="Next (→)">&#9654;&#9654;</button>
+        <div class="divider"></div>
+        <button class="btn" id="pv-slower">&#x2212;&nbsp;Slower</button>
+        <span class="sp-disp" id="pv-spd">1×</span>
+        <button class="btn" id="pv-faster">&#x2B;&nbsp;Faster</button>
+        <div class="btn-row-r">
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Space · ← →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="pv-footer">
+    <span><span class="live-dot pulse"></span>HRRR · 3 km CONUS · Previous 12 h</span>
+    <span>Verification: POD &amp; FAR vs ASOS</span>
+    <span>Drizzle→Rain · Mixed→Snow · Hail ignored</span>
+    <span>IEM ASOS · Iowa Environmental Mesonet</span>
+  </footer>
+
+</section><!-- /p-asos -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PANEL 2 — MRMS QPE vs HRRR  (static period figures)
+     Ported from stageiv_vs_hrrr__2_.html — Stage IV
+     references updated throughout for MRMS QPE.
+═══════════════════════════════════════════════════════════ -->
+<section class="panel" id="p-qpe">
+<div class="qpe-wrap">
+
+  <div class="qpe-top">
+    <h2 style="font-size:13px;font-weight:600">MRMS QPE vs HRRR</h2>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">
+      Multi-period accumulated precipitation
+    </span>
+    <span class="badge badge-gray" style="margin-left:auto">
+      MultiSensor QPE Pass 2
+    </span>
+  </div>
+
+  <div class="file-zone">
+    <div class="fz-text">
+      <strong>Load Figures</strong>
+      Run <code>python -m wx_monitor mrms_hrrr</code> then open the output PNGs —
+      pattern: <code>mrms_qpe_vs_hrrr_&lt;HH&gt;hr_&lt;YYYYMMDD_HH&gt;*.png</code>
+    </div>
+    <label class="ul-btn" for="qpe-file">Open Files</label>
+    <input type="file" id="qpe-file" accept="image/png,image/*" multiple>
+  </div>
+
+  <div class="period-tabs" id="qpe-ptabs"></div>
+
+  <div class="viewer-frame" id="qpe-vframe">
+    <img id="qpe-img" src="" alt="MRMS QPE vs HRRR figure" style="display:none">
+    <div class="vf-placeholder" id="qpe-ph">
+      <p id="qpe-ph-txt">Load PNG files above to begin</p>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="stat"><span class="stlbl">Period</span>  <span class="stval" id="qpe-st-period">—</span></div>
+    <div class="stat"><span class="stlbl">Valid Time</span><span class="stval" id="qpe-st-valid">—</span></div>
+    <div class="stat"><span class="stlbl">Loaded</span>   <span class="stval" id="qpe-st-loaded">0 figures</span></div>
+    <div class="stat"><span class="stlbl">File</span>     <span class="stval" id="qpe-st-file">—</span></div>
+  </div>
+
+  <div class="qpe-footer">
+    <span>MRMS MultiSensor QPE Pass 2 · mrms.ncep.noaa.gov</span>
+    <span>HRRR APCP · NOAA/ESRL · noaa-hrrr-bdp-pds.s3.amazonaws.com</span>
+    <span>Keys 1–4 switch period</span>
+  </div>
+
+</div>
+</section><!-- /p-qpe -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PANEL 3 — GOES-19 Visible + MRMS Composite Reflectivity
+═══════════════════════════════════════════════════════════ -->
+<section class="panel" id="p-goes">
+<div class="goes-wrap">
+
+  <div class="goes-top">
+    <h2>GOES-19 Visible &nbsp;+&nbsp; MRMS Composite Reflectivity</h2>
+    <div class="goes-top-meta" id="goes-meta" style="display:none">
+      <span id="goes-ts-txt">—</span>
+      <span id="goes-fn-txt">—</span>
+    </div>
+  </div>
+
+  <!-- satellite viewer (dark) -->
+  <div class="goes-viewer" id="goes-viewer">
+    <img id="goes-img" src="" alt="GOES-19 CONUS GeoColor + MRMS reflectivity" draggable="false">
+    <div class="goes-overlay-ts" id="goes-ots"></div>
+    <div class="goes-empty" id="goes-empty">
+      <div class="goes-empty-ico">🛰</div>
+      <p>No image loaded.<br>
+         Run <code>python -m wx_monitor goes_mrms</code><br>
+         then open <code>goes19_conus_geocolor_mrms.png</code><br>
+         or drag &amp; drop the file here.</p>
+    </div>
+  </div>
+
+  <!-- colorscale legend -->
+  <div class="goes-legend">
+    <div class="gl-item">
+      <div class="gl-bar" style="background:linear-gradient(90deg,#222,#e8e8e8)"></div>
+      <div class="gl-name">GOES-19 GeoColor</div>
+      <div class="gl-desc">Day: True Color (C01·C02·C03) · Night: IR (C07·C13)</div>
+    </div>
+    <div class="gl-item">
+      <div class="gl-bar" style="background:linear-gradient(90deg,
+        #00ecec 0%,#01a0f6 7%,#0000f6 14%,
+        #00ff00 21%,#00c800 28%,#009000 35%,
+        #ffff00 42%,#e7c000 49%,#ff9000 56%,
+        #ff0000 63%,#d60000 70%,#c00000 77%,
+        #ff00ff 84%,#9955cc 91%,#ffffff 100%)">
+      </div>
+      <div class="gl-name">MRMS Reflectivity</div>
+      <div class="gl-desc">MergedReflectivityQCComposite · dBZ · α 0.70</div>
+    </div>
+    <div class="gl-item">
+      <div class="gl-bar" style="background:linear-gradient(90deg,#00ecec,#ffff00,#ff0000,#ff00ff)"></div>
+      <div class="gl-name">Scale</div>
+      <div class="gl-desc">−10 → 5 → 35 → 55 → 75 dBZ</div>
+    </div>
+    <div class="gl-item">
+      <div class="gl-bar" style="background:#111"></div>
+      <div class="gl-name">No Signal</div>
+      <div class="gl-desc">Dark = no cloud · no precip</div>
+    </div>
+  </div>
+
+  <div class="goes-file-zone">
+    <div class="gfz-text">
+      <strong>Load Image</strong>
+      Run <code>python -m wx_monitor goes_mrms</code>, then open
+      <code>goes19_conus_geocolor_mrms.png</code> — or drag &amp; drop it onto the viewer above.
+    </div>
+    <label class="ul-btn" for="goes-file">Open File</label>
+    <input type="file" id="goes-file" accept="image/png,image/*">
+  </div>
+
+  <div class="goes-footer">
+    <span>GOES-19 ABI GeoColor (C01·C02·C03·C07·C13) · s3://noaa-goes19 (anonymous)</span>
+    <span>MRMS MergedReflectivityQCComposite · mrms.ncep.noaa.gov</span>
+    <span>Lambert Conformal projection · CONUS extent · 150 dpi</span>
+  </div>
+
+</div>
+</section><!-- /p-goes -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PANEL 4 — Reflectivity at −10 °C  (MRMS vs HRRR F01/F03/F06/F12)
+═══════════════════════════════════════════════════════════ -->
+<section class="panel" id="p-refl">
+<div class="qpe-wrap">
+
+  <div class="qpe-top">
+    <h2 style="font-size:13px;font-weight:600">Reflectivity at −10 °C</h2>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">
+      MRMS observed vs HRRR forecast · 263 K isotherm · dBZ
+    </span>
+    <span class="badge badge-gray" style="margin-left:auto">
+      REFD:263 K
+    </span>
+  </div>
+
+  <div class="file-zone">
+    <div class="fz-text">
+      <strong>Load Figures</strong>
+      Run <code>python -m wx_monitor refl_m10</code> then open the output PNGs —
+      pattern: <code>refl_m10_f&lt;FXX&gt;_&lt;YYYYMMDD_HH&gt;*.png</code>
+    </div>
+    <label class="ul-btn" for="refl-file">Open Files</label>
+    <input type="file" id="refl-file" accept="image/png,image/*" multiple>
+  </div>
+
+  <div class="period-tabs" id="refl-ptabs"></div>
+
+  <div class="viewer-frame" id="refl-vframe">
+    <img id="refl-img" src="" alt="Reflectivity −10 °C figure" style="display:none">
+    <div class="vf-placeholder" id="refl-ph">
+      <p id="refl-ph-txt">Load PNG files above to begin</p>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="stat"><span class="stlbl">Forecast</span>  <span class="stval" id="refl-st-fxx">—</span></div>
+    <div class="stat"><span class="stlbl">Valid Time</span><span class="stval" id="refl-st-valid">—</span></div>
+    <div class="stat"><span class="stlbl">Loaded</span>    <span class="stval" id="refl-st-loaded">0 figures</span></div>
+    <div class="stat"><span class="stlbl">File</span>      <span class="stval" id="refl-st-file">—</span></div>
+  </div>
+
+  <div class="qpe-footer">
+    <span>MRMS Reflectivity_-10C · mrms.ncep.noaa.gov</span>
+    <span>HRRR REFD:263 K · NOAA/ESRL · noaa-hrrr-bdp-pds.s3.amazonaws.com</span>
+    <span>Keys 1–4 switch forecast hour</span>
+  </div>
+
+</div>
+</section><!-- /p-refl -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     JavaScript
+═══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ─── Tab switching ──────────────────────────────────────── */
+document.querySelectorAll('.app-tab').forEach(btn =>
+  btn.addEventListener('click', () => {
+    if (btn.dataset.panel !== 'p-asos') pvStop();
+    document.querySelectorAll('.panel')
+      .forEach(p => p.classList.toggle('active', p.id === btn.dataset.panel));
+    document.querySelectorAll('.app-tab')
+      .forEach(t => t.classList.toggle('active', t === btn));
+  })
+);
+
+/* ═══════════════════════════════════════════════════════════
+   AUTO-LOAD INFRASTRUCTURE
+   Three-layer discovery strategy, tried in order:
+
+   1. manifest.json  — written by `python -m wx_monitor` and committed
+                        to GitHub Pages.  Always works on any static host.
+   2. Directory scan — works when served by `python -m http.server`
+                        (server returns browseable HTML for directories).
+   3. Silent fail    — shows empty placeholders; user can drag-and-drop
+                        or use the file pickers in each panel.
+═══════════════════════════════════════════════════════════ */
+
+// ── App-bar status widget ─────────────────────────────────
+const _autoSt = (() => {
+  const el = document.createElement('span');
+  el.id = 'auto-st';
+  el.style.cssText =
+    'font-family:var(--mono);font-size:11px;color:var(--muted);' +
+    'display:flex;align-items:center;gap:6px;flex-shrink:0;';
+  document.querySelector('.app-spacer').insertAdjacentElement('afterend', el);
+  return el;
+})();
+
+function _stSet(html, fadeMs = 0) {
+  _autoSt.innerHTML = html;
+  if (fadeMs) setTimeout(() => { _autoSt.innerHTML = ''; }, fadeMs);
+}
+
+// ── Layer 1: manifest.json ────────────────────────────────
+/**
+ * Try to fetch manifest.json from the same origin as the HTML page.
+ * Returns the parsed object on success, null on any error.
+ * Works on GitHub Pages, local http.server, and any static CDN.
+ */
+async function fetchManifest() {
+  const candidates = [
+    'manifest.json',            // same directory as the HTML file
+    '../manifest.json',         // one level up (if HTML is in a subdir)
+  ];
+  for (const path of candidates) {
+    try {
+      const r = await fetch(path, { cache: 'no-cache' });
+      if (!r.ok) continue;
+      const data = await r.json();
+      // Basic schema validation
+      if (data && (data.goes || data.qpe || data.frames)) return data;
+    } catch (_) {}
+  }
+  return null;
+}
+
+// ── Layer 2: directory listing (python -m http.server) ────
+/**
+ * Fetch a directory listing and extract .png hrefs.
+ * Returns [] on error (file://, CORS block, GitHub Pages 403, etc.).
+ */
+async function scanDir(dirPath) {
+  try {
+    const r = await fetch(dirPath.replace(/\/?$/, '/'), { cache: 'no-cache' });
+    if (!r.ok) return [];
+    const html = await r.text();
+    return [...html.matchAll(/href="([^"\/]+\.png)"/gi)].map(m => m[1]);
+  } catch (_) { return []; }
+}
+
+// ── Master startup ────────────────────────────────────────
+/**
+ * Discover output files and route them to each panel's loader.
+ * Tries manifest.json first; falls back to directory scanning.
+ */
+async function autoLoadAll() {
+  _stSet('<span style="opacity:.6">loading…</span>');
+
+  // ── Layer 1: manifest.json ────────────────────────────
+  const manifest = await fetchManifest();
+  if (manifest) {
+    const pvPaths   = (manifest.frames   || []).filter(p =>
+      /frame_f\d+_\d+\.png$/i.test(p));
+    const qpePaths  = (manifest.qpe      || []);
+    const goesPaths = (manifest.goes     || []);
+    const reflPaths = (manifest.refl_m10 || []);
+
+    const found = [];
+    if (pvPaths.length)   { pvAutoLoadPaths(pvPaths);            found.push(`ptype:${pvPaths.length}`);   }
+    if (qpePaths.length)  { qpeAutoLoadPaths(qpePaths);          found.push(`qpe:${qpePaths.length}`);    }
+    if (goesPaths.length) { goesAutoLoadPath(goesPaths[0]);       found.push('goes:1');                    }
+    if (reflPaths.length) { reflAutoLoadPaths(reflPaths);         found.push(`refl:${reflPaths.length}`);  }
+
+    if (found.length) {
+      const ts = manifest.generated
+        ? ` · <span style="opacity:.55">${manifest.generated.slice(0,16).replace('T',' ')} UTC</span>`
+        : '';
+      _stSet(`<span style="color:var(--green)">✓ manifest — ${found.join('&nbsp;&nbsp;')}${ts}</span>`, 12000);
+    } else {
+      _stSet('<span style="opacity:.5">manifest found but empty</span>', 6000);
+    }
+    return;   // success — no need for directory scan
+  }
+
+  // ── Layer 2: directory scan (local dev server) ────────
+  // Look for outputs in ./output/ (cli default) and ./ (legacy scripts)
+  const [outPngs, framePngs, rootPngs] = await Promise.all([
+    scanDir('output/'),
+    scanDir('output/frames/'),
+    scanDir('./'),
+  ]);
+
+  // Build full relative paths
+  const outPaths   = outPngs.map(f => 'output/' + f);
+  const framePaths = framePngs.map(f => 'output/frames/' + f);
+  const allPaths   = [...outPaths, ...framePaths, ...rootPngs];
+
+  const pvPaths   = framePaths.filter(p => /frame_f\d+_\d+\.png$/i.test(p));
+  const qpePaths  = allPaths.filter(p => /(?:mrms_qpe_vs_hrrr|stageiv_vs_hrrr_precip)_\d{2}hr/i.test(p));
+  const goesPaths = allPaths.filter(p => /goes19[^/]*\.png$/i.test(p));
+  const reflPaths = allPaths.filter(p => /refl_m10_f\d{2}_/i.test(p));
+
+  const found = [];
+  if (pvPaths.length)   { pvAutoLoadPaths(pvPaths);       found.push(`ptype:${pvPaths.length}`);  }
+  else                  { pvAutoLoad(); }   // last-resort: probe known filenames
+  if (qpePaths.length)  { qpeAutoLoadPaths(qpePaths);     found.push(`qpe:${qpePaths.length}`);   }
+  if (goesPaths.length) { goesAutoLoadPath(goesPaths[0]); found.push('goes:1');                   }
+  if (reflPaths.length) { reflAutoLoadPaths(reflPaths);   found.push(`refl:${reflPaths.length}`); }
+
+  if (found.length) {
+    _stSet(`<span style="color:var(--green)">✓ dir-scan — ${found.join('&nbsp;&nbsp;')}</span>`, 9000);
+  } else {
+    _stSet('<span style="opacity:.4">no outputs found — use file pickers below</span>', 9000);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL 1 — HRRR + ASOS  (animation viewer)
+═══════════════════════════════════════════════════════════ */
+const N_FRAMES = 12;
+const FXX_LIST = [1, 3, 6, 12];
+const SPEEDS   = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0];
+
+let pvFxx    = 6;
+let pvSpdIdx = 2;
+let pvIdx    = 0;
+let pvOn     = false;
+let pvTimer  = null;
+let pvFrames = [];
+let pvTimes  = [];
+const pvCache = {};
+
+const pvImg    = document.getElementById('pv-img');
+const pvNodata = document.getElementById('pv-nodata');
+const pvScrub  = document.getElementById('pv-scrub');
+const pvTlbl   = document.getElementById('pv-tlbl');
+const pvTcnt   = document.getElementById('pv-tcnt');
+const pvDots   = document.getElementById('pv-dots');
+const pvPlay   = document.getElementById('pv-play');
+const pvPrev   = document.getElementById('pv-prev');
+const pvNext   = document.getElementById('pv-next');
+const pvSlower = document.getElementById('pv-slower');
+const pvFaster = document.getElementById('pv-faster');
+const pvSpd    = document.getElementById('pv-spd');
+const pvDrop   = document.getElementById('pv-drop');
+const pvFile   = document.getElementById('pv-file');
+const pvLoadst = document.getElementById('pv-loadst');
+const pvLoadbar= document.getElementById('pv-loadbar');
+const pvIvV    = document.getElementById('pv-iv-valid');
+const pvIvR    = document.getElementById('pv-iv-run');
+const pvIvFxx  = document.getElementById('pv-iv-fxx');
+const pvFxxSel = document.getElementById('pv-fxx-sel');
+const pvHint   = document.getElementById('pv-drop-hint');
+
+// fxx selector
+pvFxxSel.addEventListener('click', e => {
+  const btn = e.target.closest('.fxx-btn');
+  if (!btn) return;
+  const fxx = parseInt(btn.dataset.fxx, 10);
+  if (fxx === pvFxx) return;
+  pvSelectFxx(fxx);
+});
+
+function pvSelectFxx(fxx) {
+  const ts = pvTimes[pvIdx] || null;
+  pvFxx = fxx;
+  pvFxxSel.querySelectorAll('.fxx-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.fxx, 10) === fxx)
+  );
+  pvIvFxx.textContent = `F${String(fxx).padStart(2,'0')}`;
+  const pad = String(fxx).padStart(2,'0');
+  pvHint.textContent = `frame_f${pad}_00.png … frame_f${pad}_11.png`;
+  pvFrames = []; pvTimes = [];
+  pvLoadbar.style.width = '0%';
+  pvNodata.classList.add('show');
+  if (!pvFromCache(fxx, ts, false)) {
+    pvLoadst.textContent = `Switching to F${pad}…`;
+    pvAutoLoad(ts, false);
+  }
+}
+
+// playback
+function pvInterval() { return Math.round(900 / SPEEDS[pvSpdIdx]); }
+
+function pvStart() {
+  if (pvTimer) clearInterval(pvTimer);
+  pvTimer = setInterval(() => { pvIdx = (pvIdx + 1) % pvFrames.length; pvShow(pvIdx); }, pvInterval());
+  pvOn = true;
+  pvPlay.innerHTML = '&#9646;&#9646;'; pvPlay.classList.add('active');
+}
+
+function pvStop() {
+  clearInterval(pvTimer); pvTimer = null;
+  pvOn = false;
+  pvPlay.innerHTML = '&#9654;'; pvPlay.classList.remove('active');
+}
+
+function pvToggle() { if (!pvFrames.length) return; pvOn ? pvStop() : pvStart(); }
+
+pvPlay.addEventListener('click', pvToggle);
+pvPrev.addEventListener('click', () => { pvStop(); pvShow(pvIdx - 1); });
+pvNext.addEventListener('click', () => { pvStop(); pvShow(pvIdx + 1); });
+pvScrub.addEventListener('input', () => { pvStop(); pvShow(+pvScrub.value); });
+
+pvSlower.addEventListener('click', () => {
+  pvSpdIdx = Math.max(0, pvSpdIdx - 1);
+  pvSpd.textContent = SPEEDS[pvSpdIdx].toFixed(2).replace(/\.?0+$/,'') + '×';
+  if (pvOn) pvStart();
+});
+pvFaster.addEventListener('click', () => {
+  pvSpdIdx = Math.min(SPEEDS.length - 1, pvSpdIdx + 1);
+  pvSpd.textContent = SPEEDS[pvSpdIdx].toFixed(2).replace(/\.?0+$/,'') + '×';
+  if (pvOn) pvStart();
+});
+
+// dots
+function pvBuildDots() {
+  pvDots.innerHTML = '';
+  for (let i = 0; i < pvFrames.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot loaded';
+    d.title = pvTimes[i] ? pvFmtUTC(pvTimes[i]) : `Frame ${i+1}`;
+    d.addEventListener('click', () => { pvStop(); pvShow(i); });
+    pvDots.appendChild(d);
+  }
+}
+
+function pvUpdDots() {
+  [...pvDots.children].forEach((d,i) => d.classList.toggle('active', i === pvIdx));
+}
+
+// timestamps
+function pvParseTs(name) {
+  const m = name.match(/frame_f(\d+)_(\d+)/i);
+  const n = m ? parseInt(m[2], 10) : null;
+  if (n === null) return null;
+  const now = new Date(); now.setMinutes(0,0,0);
+  return new Date(now.getTime() - (N_FRAMES - 1 - n) * 3600000 - 3600000);
+}
+function pvFmtUTC(d) {
+  return d ? d.toISOString().replace('T',' ').slice(0,16) + ' UTC' : '— UTC';
+}
+function pvFmtRun(d) {
+  return d ? pvFmtUTC(new Date(d.getTime() - pvFxx * 3600000)) : '—';
+}
+
+// show frame
+function pvShow(idx) {
+  if (!pvFrames.length) return;
+  idx = Math.max(0, Math.min(pvFrames.length - 1, idx));
+  pvIdx = idx;
+  pvImg.classList.add('fading');
+  setTimeout(() => { pvImg.src = pvFrames[idx].src; pvImg.classList.remove('fading'); }, 80);
+  pvScrub.value = idx;
+  pvTcnt.textContent = `${idx+1} / ${pvFrames.length}`;
+  const ts = pvTimes[idx];
+  pvTlbl.textContent = ts ? pvFmtUTC(ts) : `Frame ${idx+1}`;
+  pvIvV.textContent  = ts ? pvFmtUTC(ts) : '—';
+  pvIvR.textContent  = ts ? pvFmtRun(ts) : '—';
+  pvUpdDots();
+}
+
+// activate
+function pvActivate(targetTs, autoplay = true) {
+  pvScrub.max = pvFrames.length - 1;
+  pvBuildDots();
+  pvNodata.classList.remove('show');
+  let start = 0;
+  if (targetTs && pvTimes.length) {
+    let best = Infinity;
+    pvTimes.forEach((ts, i) => {
+      if (!ts) return;
+      const d = Math.abs(ts - targetTs);
+      if (d < best) { best = d; start = i; }
+    });
+  }
+  pvShow(start);
+  if (autoplay) pvStart();
+}
+
+// cache
+function pvFromCache(fxx, targetTs, autoplay = true) {
+  const pad = String(fxx).padStart(2,'0');
+  const pfx = `frame_f${pad}_`;
+  const hit = Object.values(pvCache)
+    .filter(f => f.name.toLowerCase().startsWith(pfx))
+    .sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+  if (!hit.length) return false;
+  pvFrames = hit;
+  pvTimes  = hit.map(f => pvParseTs(f.name));
+  pvLoadst.innerHTML = `<span class="ok">✓ ${pvFrames.length} frames (F${pad}) — from cache</span>`;
+  pvLoadbar.style.width = '100%';
+  pvActivate(targetTs, autoplay);
+  return true;
+}
+
+// ── Auto-load from directory-scan paths ──────────────────
+// paths: array like ['frames/frame_f06_00.png', ...]
+// Populates pvCache for ALL fxx values found so switching
+// fxx buttons works immediately without re-fetching.
+function pvAutoLoadPaths(paths) {
+  paths.forEach(p => {
+    const name = p.split('/').pop();
+    pvCache[name] = { src: p, name };
+  });
+
+  // Build summary: F01:n F03:n …
+  const counts = FXX_LIST.map(f => {
+    const pad = String(f).padStart(2,'0');
+    const n   = Object.keys(pvCache)
+      .filter(k => k.toLowerCase().startsWith(`frame_f${pad}_`)).length;
+    return n ? `F${pad}:${n}` : null;
+  }).filter(Boolean);
+
+  pvLoadst.innerHTML = `<span class="ok">✓ auto-loaded — ${counts.join('&nbsp;&nbsp;')}</span>`;
+  pvLoadbar.style.width = '100%';
+
+  // Activate the default fxx; if no frames for it, try others in order
+  if (!pvFromCache(pvFxx, null)) {
+    for (const fxx of FXX_LIST) {
+      if (pvFromCache(fxx, null)) {
+        // Sync selector UI to the fxx we actually activated
+        pvFxx = fxx;
+        pvFxxSel.querySelectorAll('.fxx-btn').forEach(b =>
+          b.classList.toggle('active', parseInt(b.dataset.fxx, 10) === fxx)
+        );
+        pvIvFxx.textContent = `F${String(fxx).padStart(2,'0')}`;
+        break;
+      }
+    }
+  }
+}
+
+// ── Manual file load ──────────────────────────────────────
+function pvLoadFiles(list) {
+  const imgs = [...list]
+    .filter(f => f.type.startsWith('image/') || f.name.match(/\.png$/i))
+    .sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+  if (!imgs.length) { pvLoadst.innerHTML = '<span class="fail">No valid images.</span>'; return; }
+  pvStop();
+  pvLoadbar.style.width = '0%';
+  pvLoadst.textContent = `Loading ${imgs.length} file(s)…`;
+  let loaded = 0;
+  imgs.forEach(file => {
+    const r = new FileReader();
+    r.onload = e => {
+      pvCache[file.name] = { src: e.target.result, name: file.name };
+      loaded++;
+      pvLoadbar.style.width = `${loaded/imgs.length*100}%`;
+      if (loaded === imgs.length) {
+        const cts = FXX_LIST.map(f => {
+          const p = String(f).padStart(2,'0');
+          const n = Object.keys(pvCache).filter(k => k.toLowerCase().startsWith(`frame_f${p}_`)).length;
+          return n ? `F${p}:${n}` : null;
+        }).filter(Boolean).join('  ');
+        pvLoadst.innerHTML = `<span class="ok">✓ ${loaded} cached — ${cts}</span>`;
+        if (!pvFromCache(pvFxx, null))
+          pvLoadst.innerHTML += `<br><span class="fail">No F${String(pvFxx).padStart(2,'0')} frames.</span>`;
+      }
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+pvDrop.addEventListener('click', () => pvFile.click());
+pvFile.addEventListener('change', e => pvLoadFiles(e.target.files));
+pvDrop.addEventListener('dragover', e => { e.preventDefault(); pvDrop.classList.add('over'); });
+pvDrop.addEventListener('dragleave', () => pvDrop.classList.remove('over'));
+pvDrop.addEventListener('drop', e => {
+  e.preventDefault(); pvDrop.classList.remove('over');
+  pvLoadFiles(e.dataTransfer.files);
+});
+
+// auto-load from frames/
+async function pvAutoLoad(targetTs, autoplay = true) {
+  const pad = String(pvFxx).padStart(2,'0');
+  const srcs = Array.from({length: N_FRAMES}, (_,i) =>
+    `frames/frame_f${pad}_${String(i).padStart(2,'0')}.png`);
+  const res = await Promise.allSettled(
+    srcs.map(s => fetch(s, {method:'HEAD'}).then(r => r.ok ? s : Promise.reject()))
+  );
+  const found = res.map((r,i) => r.status==='fulfilled' ? srcs[i] : null).filter(Boolean);
+  if (!found.length) {
+    pvLoadst.innerHTML = `<span class="fail">No frames for F${pad} in frames/.</span>`;
+    return;
+  }
+  pvFrames = found.map(s => ({src:s, name:s.split('/').pop()}));
+  pvTimes  = found.map(s => pvParseTs(s.split('/').pop()));
+  pvLoadst.innerHTML = `<span class="ok">✓ Auto-loaded ${found.length} frames (F${pad})</span>`;
+  pvLoadbar.style.width = '100%';
+  pvActivate(targetTs, autoplay);
+}
+
+// keyboard (only when this panel is active)
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (!document.getElementById('p-asos').classList.contains('active')) return;
+  if (e.code === 'Space')      { e.preventDefault(); pvToggle(); }
+  if (e.code === 'ArrowRight') { pvStop(); pvShow(pvIdx + 1); }
+  if (e.code === 'ArrowLeft')  { pvStop(); pvShow(pvIdx - 1); }
+});
+
+// init
+pvIvFxx.textContent = `F${String(pvFxx).padStart(2,'0')}`;
+pvAutoLoad();
+
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL 2 — MRMS QPE vs HRRR  (static period figures)
+   Data model: { name, src, validTime }
+   src = blob object URL (manual load) OR relative path (auto-load).
+   Both work as <img src> values; only object URLs need revoking.
+═══════════════════════════════════════════════════════════ */
+const QPE_ORDER  = ['01hr','03hr','06hr','12hr'];
+const QPE_LABELS = {'01hr':'1-Hour','03hr':'3-Hour','06hr':'6-Hour','12hr':'12-Hour'};
+
+let qpeFigs = {}, qpePeriod = null;
+
+const qpeImg   = document.getElementById('qpe-img');
+const qpePh    = document.getElementById('qpe-ph');
+const qpePhTxt = document.getElementById('qpe-ph-txt');
+const qpeFile  = document.getElementById('qpe-file');
+const qpePtabs = document.getElementById('qpe-ptabs');
+
+// ── Shared helpers ────────────────────────────────────────
+const QPE_RE = /(?:mrms_qpe_vs_hrrr|stageiv_vs_hrrr_precip)_(\d{2}hr)_(\d{8})_(\d{2})/i;
+
+function qpeFmtTime(date8, hh) {
+  return `${date8.slice(0,4)}-${date8.slice(4,6)}-${date8.slice(6,8)} ${hh}:00 UTC`;
+}
+
+function qpeIngest(entries) {
+  // entries: [{ name, src, validTime }]
+  entries.forEach(entry => {
+    const m = entry.name.match(QPE_RE);
+    const period    = m ? m[1] : 'other';
+    const validTime = m ? qpeFmtTime(m[2], m[3]) : entry.name;
+    entry.validTime = validTime;
+    if (!qpeFigs[period]) qpeFigs[period] = [];
+    qpeFigs[period].push(entry);
+  });
+  Object.keys(qpeFigs).forEach(p =>
+    qpeFigs[p].sort((a,b) => a.name.localeCompare(b.name))
+  );
+  qpeBuildTabs();
+  const first = QPE_ORDER.find(p => qpeFigs[p]) || Object.keys(qpeFigs)[0];
+  if (first) qpeSelect(first);
+  const tot = Object.values(qpeFigs).flat().length;
+  document.getElementById('qpe-st-loaded').textContent = tot + ' figure' + (tot !== 1 ? 's' : '');
+}
+
+// ── Auto-load from directory-scan paths ──────────────────
+function qpeAutoLoadPaths(paths) {
+  // Revoke any leftover blob URLs from a previous manual load
+  Object.values(qpeFigs).flat().forEach(f => {
+    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
+  });
+  qpeFigs = {};
+  qpeIngest(paths.map(p => ({ name: p.split('/').pop(), src: p })));
+}
+
+// ── Manual file picker ────────────────────────────────────
+qpeFile.addEventListener('change', e => {
+  Object.values(qpeFigs).flat().forEach(f => {
+    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
+  });
+  qpeFigs = {};
+  qpeIngest([...e.target.files].map(file => ({
+    name: file.name,
+    src:  URL.createObjectURL(file),
+  })));
+});
+
+function qpeBuildTabs() {
+  qpePtabs.innerHTML = '';
+  QPE_ORDER.filter(p => qpeFigs[p])
+    .concat(Object.keys(qpeFigs).filter(p => !QPE_ORDER.includes(p)))
+    .forEach(period => {
+      const btn = document.createElement('button');
+      btn.className = 'ptab';
+      btn.textContent = QPE_LABELS[period] || period;
+      btn.dataset.period = period;
+      btn.addEventListener('click', () => qpeSelect(period));
+      qpePtabs.appendChild(btn);
+    });
+}
+
+function qpeSelect(period) {
+  if (!qpeFigs[period]) return;
+  qpePeriod = period;
+  qpePtabs.querySelectorAll('.ptab').forEach(t =>
+    t.classList.toggle('active', t.dataset.period === period)
+  );
+  qpeShow();
+}
+
+function qpeShow() {
+  const frames = qpeFigs[qpePeriod];
+  if (!frames?.length) return;
+  const f = frames[0];
+
+  qpeImg.style.display = 'block';
+  qpeImg.classList.add('fade');
+  qpeImg.onload  = () => { qpeImg.classList.remove('fade'); qpePh.classList.add('hidden'); };
+  qpeImg.onerror = () => {
+    qpeImg.style.display = 'none';
+    qpePh.classList.remove('hidden');
+    qpePhTxt.textContent = 'Could not display: ' + f.name;
+  };
+  qpeImg.src = f.src;   // blob URL or relative path — both work as <img src>
+
+  document.getElementById('qpe-st-period').textContent = QPE_LABELS[qpePeriod] || qpePeriod;
+  document.getElementById('qpe-st-valid').textContent  = f.validTime;
+  document.getElementById('qpe-st-file').textContent   = f.name;
+}
+
+// keyboard: 1–4 switch period when QPE panel is active
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (!document.getElementById('p-qpe').classList.contains('active')) return;
+  const map = {'1':'01hr','2':'03hr','3':'06hr','4':'12hr'};
+  if (map[e.key] && qpeFigs[map[e.key]]) qpeSelect(map[e.key]);
+});
+
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL 3 — GOES-19 + MRMS Reflectivity  (static image)
+═══════════════════════════════════════════════════════════ */
+const goesImg    = document.getElementById('goes-img');
+const goesEmpty  = document.getElementById('goes-empty');
+const goesOts    = document.getElementById('goes-ots');
+const goesMeta   = document.getElementById('goes-meta');
+const goesFile   = document.getElementById('goes-file');
+const goesViewer = document.getElementById('goes-viewer');
+
+// Shared: update overlay timestamp + header metadata from a filename
+function goesApplyMeta(name) {
+  const m  = name.match(/(\d{8})_(\d{2})/);
+  const ts = m
+    ? `${m[1].slice(0,4)}-${m[1].slice(4,6)}-${m[1].slice(6,8)} ${m[2]}:00 UTC`
+    : name;
+  goesOts.textContent = ts;
+  goesOts.classList.add('show');
+  goesMeta.style.display = 'flex';
+  document.getElementById('goes-ts-txt').textContent = ts;
+  document.getElementById('goes-fn-txt').textContent = name;
+}
+
+// Auto-load: set src directly (relative path from directory scan)
+function goesAutoLoadPath(path) {
+  const name = path.split('/').pop();
+  goesImg.classList.add('fading');
+  goesImg.onload = () => {
+    goesImg.classList.remove('fading');
+    goesEmpty.classList.add('hidden');
+    goesApplyMeta(name);
+  };
+  goesImg.onerror = () => { goesImg.classList.remove('fading'); };
+  setTimeout(() => { goesImg.src = path; }, 40);
+}
+
+// Manual load: FileReader → data URL
+function goesLoad(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    goesImg.classList.add('fading');
+    goesImg.onload = () => {
+      goesImg.classList.remove('fading');
+      goesEmpty.classList.add('hidden');
+      goesApplyMeta(file.name);
+    };
+    setTimeout(() => { goesImg.src = ev.target.result; }, 40);
+  };
+  reader.readAsDataURL(file);
+}
+
+goesFile.addEventListener('change', e => { if (e.target.files[0]) goesLoad(e.target.files[0]); });
+
+// Drag-and-drop onto the dark viewer
+goesViewer.addEventListener('dragover', e => {
+  e.preventDefault();
+  goesViewer.style.outline = '2px dashed var(--accent)';
+  goesViewer.style.outlineOffset = '-3px';
+});
+goesViewer.addEventListener('dragleave', () => { goesViewer.style.outline = ''; });
+goesViewer.addEventListener('drop', e => {
+  e.preventDefault(); goesViewer.style.outline = '';
+  const f = e.dataTransfer.files[0];
+  if (f && (f.type.startsWith('image/') || f.name.match(/\.png$/i))) goesLoad(f);
+});
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL 4 — Reflectivity at −10 °C  (MRMS vs HRRR multi-fxx)
+   Data model mirrors QPE: { name, src, validTime }
+   Keyed by fxx label string: 'f01', 'f03', 'f06', 'f12'
+═══════════════════════════════════════════════════════════ */
+const RM10_ORDER  = ['f01', 'f03', 'f06', 'f12'];
+const RM10_LABELS = {'f01':'F01 (1-hr)','f03':'F03 (3-hr)',
+                     'f06':'F06 (6-hr)','f12':'F12 (12-hr)'};
+
+let reflFigs = {}, reflFxx = null;
+
+const reflImg    = document.getElementById('refl-img');
+const reflPh     = document.getElementById('refl-ph');
+const reflPhTxt  = document.getElementById('refl-ph-txt');
+const reflFile   = document.getElementById('refl-file');
+const reflPtabs  = document.getElementById('refl-ptabs');
+
+// filename pattern:  refl_m10_f06_20260302_18+0000.png
+const REFL_RE = /refl_m10_(f\d{2})_(\d{8})_(\d{2})/i;
+
+function reflFmtTime(date8, hh) {
+  return `${date8.slice(0,4)}-${date8.slice(4,6)}-${date8.slice(6,8)} ${hh}:00 UTC`;
+}
+
+function reflIngest(entries) {
+  entries.forEach(entry => {
+    const m   = entry.name.match(REFL_RE);
+    const fxx = m ? m[1].toLowerCase() : 'other';
+    entry.validTime = m ? reflFmtTime(m[2], m[3]) : entry.name;
+    if (!reflFigs[fxx]) reflFigs[fxx] = [];
+    reflFigs[fxx].push(entry);
+  });
+  Object.keys(reflFigs).forEach(k =>
+    reflFigs[k].sort((a,b) => a.name.localeCompare(b.name))
+  );
+  reflBuildTabs();
+  const first = RM10_ORDER.find(k => reflFigs[k]) || Object.keys(reflFigs)[0];
+  if (first) reflSelect(first);
+  const tot = Object.values(reflFigs).flat().length;
+  document.getElementById('refl-st-loaded').textContent =
+    tot + ' figure' + (tot !== 1 ? 's' : '');
+}
+
+function reflAutoLoadPaths(paths) {
+  Object.values(reflFigs).flat().forEach(f => {
+    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
+  });
+  reflFigs = {};
+  reflIngest(paths.map(p => ({ name: p.split('/').pop(), src: p })));
+}
+
+reflFile.addEventListener('change', e => {
+  Object.values(reflFigs).flat().forEach(f => {
+    if (f.src?.startsWith('blob:')) { try { URL.revokeObjectURL(f.src); } catch(_){} }
+  });
+  reflFigs = {};
+  reflIngest([...e.target.files].map(file => ({
+    name: file.name,
+    src:  URL.createObjectURL(file),
+  })));
+});
+
+function reflBuildTabs() {
+  reflPtabs.innerHTML = '';
+  RM10_ORDER.filter(k => reflFigs[k])
+    .concat(Object.keys(reflFigs).filter(k => !RM10_ORDER.includes(k)))
+    .forEach(fxx => {
+      const btn = document.createElement('button');
+      btn.className   = 'ptab';
+      btn.textContent = RM10_LABELS[fxx] || fxx.toUpperCase();
+      btn.dataset.fxx = fxx;
+      btn.addEventListener('click', () => reflSelect(fxx));
+      reflPtabs.appendChild(btn);
+    });
+}
+
+function reflSelect(fxx) {
+  if (!reflFigs[fxx]) return;
+  reflFxx = fxx;
+  reflPtabs.querySelectorAll('.ptab').forEach(t =>
+    t.classList.toggle('active', t.dataset.fxx === fxx)
+  );
+  reflShow();
+}
+
+function reflShow() {
+  const frames = reflFigs[reflFxx];
+  if (!frames?.length) return;
+  const f = frames[0];
+
+  reflImg.style.display = 'block';
+  reflImg.classList.add('fade');
+  reflImg.onload  = () => { reflImg.classList.remove('fade'); reflPh.classList.add('hidden'); };
+  reflImg.onerror = () => {
+    reflImg.style.display = 'none';
+    reflPh.classList.remove('hidden');
+    reflPhTxt.textContent = 'Could not display: ' + f.name;
+  };
+  reflImg.src = f.src;
+
+  document.getElementById('refl-st-fxx').textContent   = RM10_LABELS[reflFxx] || reflFxx.toUpperCase();
+  document.getElementById('refl-st-valid').textContent  = f.validTime;
+  document.getElementById('refl-st-file').textContent   = f.name;
+}
+
+// keyboard: 1–4 switch forecast hour when this panel is active
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (!document.getElementById('p-refl').classList.contains('active')) return;
+  const map = {'1':'f01','2':'f03','3':'f06','4':'f12'};
+  if (map[e.key] && reflFigs[map[e.key]]) reflSelect(map[e.key]);
+});
+
+
+/* ─── Startup ─────────────────────────────────────────────── */
+pvIvFxx.textContent = `F${String(pvFxx).padStart(2,'0')}`;
+autoLoadAll();
+</script>
+</body>
+</html>
