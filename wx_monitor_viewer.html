@@ -3,9 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Security: lock to same-origin; no external scripts, no eval, no framing -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' 'unsafe-inline';
+               style-src 'self' 'unsafe-inline';
+               img-src 'self' data:;
+               connect-src 'self';
+               frame-ancestors 'none';
+               base-uri 'self';
+               form-action 'none';">
+<meta name="referrer" content="no-referrer">
 <title>wx-monitor</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- Fonts: system stack only — no third-party requests -->
 <style>
 /* ─────────────────────────────────────────────────────────────
    Design tokens  (shared across all three panels)
@@ -24,8 +34,8 @@
   --frzr:       #d73027;
   --icep:       #f46d43;
   --green:      #16a34a;
-  --mono:       'IBM Plex Mono', monospace;
-  --sans:       'IBM Plex Sans', sans-serif;
+  --mono:       'IBM Plex Mono', ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+  --sans:       'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --r:          6px;
   --shadow:     0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px var(--border);
 }

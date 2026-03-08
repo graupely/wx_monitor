@@ -8,6 +8,10 @@ on:
   # Allow manual trigger from the Actions tab
   workflow_dispatch:
 
+# Minimal permissions — CI only needs to read code and post check results
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint (ruff)
